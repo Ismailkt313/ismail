@@ -62,10 +62,12 @@ export const HeroSection: React.FC = () => {
   const [hoveredSkill, setHoveredSkillState] = useState<number | null>(null);
   const [selectedSkill, setSelectedSkillState] = useState<number | null>(null);
   const [isDragging, setIsDraggingState] = useState(false);
+  const [isTouch, setIsTouch] = useState(false);
 
   const hoveredSkillRef = useRef<number | null>(null);
   const selectedSkillRef = useRef<number | null>(null);
   const isDraggingRef = useRef(false);
+  const isTouchRef = useRef(false);
   const lastPointerPosition = useRef({ x: 0, y: 0 });
   const dragDistance = useRef(0);
   const hoverProgressRef = useRef<number[]>(new Array(SKILLS.length).fill(0));
@@ -79,6 +81,12 @@ export const HeroSection: React.FC = () => {
     selectedSkillRef.current = val;
     setSelectedSkillState(val);
   };
+
+  useEffect(() => {
+    const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    setIsTouch(hasTouch);
+    isTouchRef.current = hasTouch;
+  }, []);
 
   /* ── Rotation matrix helpers ── */
   const rotateY = useCallback((x: number, z: number, a: number): [number, number] => {
@@ -100,7 +108,8 @@ export const HeroSection: React.FC = () => {
     
     const animate = () => {
       const RADIUS = container.offsetWidth * 0.38;
-      const friction = 0.95; // momentum damping
+      // momentum damping: decay faster on touch to save mobile battery and GPU redraws
+      const friction = isTouchRef.current ? 0.90 : 0.95;
       const idleVelocity = { x: 0.0003, y: 0.0005 };
 
       if (!isDraggingRef.current) {
@@ -126,8 +135,10 @@ export const HeroSection: React.FC = () => {
         const isHovered = hoveredSkillRef.current === i;
         const targetProgress = isHovered ? 1 : 0;
         
-        // Smoothly lerp hover scaling factor
-        hoverProgressRef.current[i] += (targetProgress - hoverProgressRef.current[i]) * 0.15;
+        // Smoothly lerp hover scaling factor (skip on touch devices to save layout passes)
+        if (!isTouchRef.current) {
+          hoverProgressRef.current[i] += (targetProgress - hoverProgressRef.current[i]) * 0.15;
+        }
 
         const [px, py, pz] = SPHERE_POINTS[i];
 
@@ -140,18 +151,19 @@ export const HeroSection: React.FC = () => {
         
         // Base scale and depth opacity
         const baseScale = 0.55 + depth * 0.55;
-        // 20% scale boost on hover, scaled smoothly by hoverProgress
-        const hoverScaleMultiplier = 1 + hoverProgressRef.current[i] * 0.2;
+        // 20% scale boost on hover (only active on desktop/hover interfaces), scaled smoothly by hoverProgress
+        const hoverScaleMultiplier = isTouchRef.current ? 1 : (1 + hoverProgressRef.current[i] * 0.2);
         const scale = baseScale * hoverScaleMultiplier;
 
-        // Boost opacity when hovered to draw focus
+        // Boost opacity when hovered (only active on desktop/hover interfaces)
         const baseOpacity = 0.2 + depth * 0.8;
-        const opacity = Math.min(1, baseOpacity + hoverProgressRef.current[i] * 0.3);
+        const opacity = isTouchRef.current ? baseOpacity : Math.min(1, baseOpacity + hoverProgressRef.current[i] * 0.3);
 
         const translateX = rx * RADIUS;
         const translateY = ry * RADIUS;
 
-        tag.style.transform = `translate(-50%, -50%) translate(${translateX}px, ${translateY}px) scale(${scale})`;
+        // Use translate3d to offload rendering layout shifts to GPU composition
+        tag.style.transform = `translate3d(-50%, -50%, 0) translate3d(${translateX}px, ${translateY}px, 0) scale(${scale})`;
         tag.style.opacity = String(opacity);
         
         // Bring hovered tags to front
@@ -337,8 +349,8 @@ export const HeroSection: React.FC = () => {
               <span
                 key={skill}
                 className={`sphere-tag${hoveredSkill === i ? ' sphere-tag--hovered' : ''}`}
-                onMouseEnter={() => setHoveredSkill(i)}
-                onMouseLeave={() => setHoveredSkill(null)}
+                onMouseEnter={() => !isTouch && setHoveredSkill(i)}
+                onMouseLeave={() => !isTouch && setHoveredSkill(null)}
                 onClick={(e) => handleTagClick(e, i)}
               >
                 {skill}

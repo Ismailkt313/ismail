@@ -1127,15 +1127,17 @@ body.global-grabbing {
   }
 }
 
-.sphere-tag:hover,
-.sphere-tag--hovered {
-  color: var(--text-primary);
-  background: rgba(99, 179, 255, 0.12);
-  border-color: rgba(99, 179, 255, 0.4);
-  box-shadow:
-    0 0 20px rgba(99, 179, 255, 0.2),
-    0 0 4px rgba(99, 179, 255, 0.1);
-  text-shadow: 0 0 8px rgba(255, 255, 255, 0.15);
+@media (hover: hover) {
+  .sphere-tag:hover,
+  .sphere-tag--hovered {
+    color: var(--text-primary);
+    background: rgba(99, 179, 255, 0.12);
+    border-color: rgba(99, 179, 255, 0.4);
+    box-shadow:
+      0 0 20px rgba(99, 179, 255, 0.2),
+      0 0 4px rgba(99, 179, 255, 0.1);
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.15);
+  }
 }
 
 /* Premium Skill details tooltip overlays */
@@ -1166,6 +1168,20 @@ body.global-grabbing {
   position: relative;
   animation: sphereCardScaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   text-align: left;
+}
+
+@media (max-width: 768px) {
+  .sphere-tooltip-overlay {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: rgba(8, 10, 18, 0.75); /* Simpler fallback on mobile */
+  }
+
+  .sphere-tooltip-card {
+    background: #0e1120; /* Solid background on mobile */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5); /* Simpler, smaller shadow */
+    border-color: rgba(99, 179, 255, 0.15);
+  }
 }
 
 @keyframes sphereCardScaleIn {
