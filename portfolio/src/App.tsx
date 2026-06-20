@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Header } from './components/Header';
 import { HeroSection } from './components/HeroSection';
+import { WhatsBuiltSection } from './components/WhatsBuiltSection';
 import { AIAssistantModal } from './components/AIAssistantModal';
 import './index.css';
 
@@ -14,11 +15,13 @@ function App() {
       {/* ── Hero Section ── */}
       <HeroSection />
 
+      {/* ── What I've Built ── */}
+      <WhatsBuiltSection />
+
       {/* ── Scrollspy section targets ── */}
       <main>
         {[
           { id: 'my-journey',  label: 'My Journey' },
-          { id: 'whats-built', label: "What I've Built" },
           { id: 'tech-stack',  label: 'Tech Stack' },
           { id: 'contact',     label: 'Contact' },
         ].map(({ id, label }) => (
@@ -52,3 +55,4 @@ function App() {
 }
 
 export default App;
+
