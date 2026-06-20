@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Menu, X, Download, ArrowRight } from 'lucide-react';
+import { Menu, X, Download, ArrowRight, Sun, Moon } from 'lucide-react';
 
 interface HeaderProps {
   onAskClick?: () => void; // kept optional for backwards compatibility
@@ -16,6 +16,31 @@ export const Header: React.FC<HeaderProps> = () => {
   const [scrolled, setScrolled]     = useState(false);
   const [active, setActive]         = useState('');
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [theme, setTheme]           = useState<'light' | 'dark'>('light');
+
+  /* ── Detect theme on mount ── */
+  useEffect(() => {
+    const saved = localStorage.getItem('theme');
+    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const initial = saved || (systemPrefersDark ? 'dark' : 'light');
+    setTheme(initial as 'light' | 'dark');
+    if (initial === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const next = theme === 'light' ? 'dark' : 'light';
+    setTheme(next);
+    localStorage.setItem('theme', next);
+    if (next === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  };
 
   /* ── Scroll → glassmorphism ── */
   useEffect(() => {
@@ -152,17 +177,28 @@ export const Header: React.FC<HeaderProps> = () => {
             ))}
           </nav>
 
-          {/* ─── Single CTA: View Resume ─────────── */}
-          <div className="cta-group">
+          {/* ─── Theme Toggle & CTA Group ─────────── */}
+          <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <button
-              className="btn-ghost btn-resume"
-              onClick={downloadResume}
-              id="view-resume-btn"
-              aria-label="Download resume"
+              className="theme-toggle-btn"
+              onClick={toggleTheme}
+              aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+              title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
             >
-              <Download size={13} strokeWidth={2.2} />
-              <span>View Resume</span>
+              {theme === 'light' ? <Moon size={15} /> : <Sun size={15} />}
             </button>
+
+            <div className="cta-group">
+              <button
+                className="btn-ghost btn-resume"
+                onClick={downloadResume}
+                id="view-resume-btn"
+                aria-label="Download resume"
+              >
+                <Download size={13} strokeWidth={2.2} />
+                <span>View Resume</span>
+              </button>
+            </div>
           </div>
 
           {/* ─── Mobile Hamburger ────────────────── */}

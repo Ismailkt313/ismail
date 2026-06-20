@@ -1,11 +1,23 @@
-import React, { useEffect, useRef, useCallback, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { ChevronRight, X } from 'lucide-react';
 
-/* ── Skill Sphere Data ────────────────────────────── */
-const SKILLS = [
-  'React', 'TypeScript', 'JavaScript', 'Node.js', 'Express.js',
-  'MongoDB', 'Socket.IO', 'JWT', 'AWS', 'Docker',
-  'Tailwind CSS', 'GitHub', 'Cloudinary', 'REST APIs',
+/* ── Technology Ecosystem Data ── */
+const ECO_SKILLS = [
+  { name: 'React', color: '#60A5FA' },
+  { name: 'TypeScript', color: '#4F46E5' },
+  { name: 'Node.js', color: '#16A34A' },
+  { name: 'MongoDB', color: '#10B981' },
+  { name: 'Docker', color: '#0ea5e9' },
+  { name: 'AWS', color: '#F97316' },
+];
+
+const NODE_POSITIONS = [
+  { x: 50, y: 15 },    // React (top center)
+  { x: 79, y: 32.5 },  // TypeScript (top right)
+  { x: 79, y: 67.5 },  // Node.js (bottom right)
+  { x: 50, y: 85 },    // MongoDB (bottom center)
+  { x: 21, y: 67.5 },  // Docker (bottom left)
+  { x: 21, y: 32.5 },  // AWS (top left)
 ];
 
 interface SkillDetail {
@@ -16,253 +28,18 @@ interface SkillDetail {
 const SKILL_DETAILS: Record<string, SkillDetail> = {
   'React': { category: 'Frontend Development', projects: ['QuickWork', 'DevShowroom', 'ErrorLens'] },
   'TypeScript': { category: 'Type-Safe Programming', projects: ['QuickWork', 'ErrorLens', 'Timzo'] },
-  'JavaScript': { category: 'Core Web Language', projects: ['QuickWork', 'DevShowroom', 'Timzo'] },
   'Node.js': { category: 'Backend Runtime', projects: ['QuickWork', 'ErrorLens', 'Timzo'] },
-  'Express.js': { category: 'Backend Framework', projects: ['QuickWork', 'ErrorLens'] },
   'MongoDB': { category: 'Database Systems', projects: ['QuickWork', 'DevShowroom'] },
-  'Socket.IO': { category: 'Real-time WebSockets', projects: ['QuickWork', 'ErrorLens'] },
-  'JWT': { category: 'Secure Authentication', projects: ['QuickWork', 'ErrorLens', 'DevShowroom'] },
-  'AWS': { category: 'Cloud Infrastructure', projects: ['QuickWork', 'ErrorLens'] },
   'Docker': { category: 'DevOps & Containerization', projects: ['ErrorLens', 'DevShowroom'] },
-  'Tailwind CSS': { category: 'CSS Utility Framework', projects: ['QuickWork', 'DevShowroom', 'Timzo'] },
-  'GitHub': { category: 'Version Control', projects: ['All Projects'] },
-  'Cloudinary': { category: 'Media Management', projects: ['DevShowroom'] },
-  'REST APIs': { category: 'API Integration', projects: ['All Projects'] },
+  'AWS': { category: 'Cloud Infrastructure', projects: ['QuickWork', 'ErrorLens'] },
 };
 
-
-/* ── Tech Preview Pills ───────────────────────────── */
+/* ── Tech Preview Pills ── */
 const TECH_PILLS = ['React', 'TypeScript', 'Node.js', 'MongoDB', 'AWS', 'Docker'];
 
-/* ── Fibonacci sphere point distribution ──────────── */
-function fibonacciSphere(count: number): [number, number, number][] {
-  const points: [number, number, number][] = [];
-  const goldenAngle = Math.PI * (3 - Math.sqrt(5));
-  for (let i = 0; i < count; i++) {
-    const y = 1 - (i / (count - 1)) * 2;
-    const radius = Math.sqrt(1 - y * y);
-    const theta = goldenAngle * i;
-    points.push([Math.cos(theta) * radius, y, Math.sin(theta) * radius]);
-  }
-  return points;
-}
-
-const SPHERE_POINTS = fibonacciSphere(SKILLS.length);
-
-/* ── Component ────────────────────────────────────── */
 export const HeroSection: React.FC = () => {
-  const sphereRef = useRef<HTMLDivElement>(null);
-  const animFrameRef = useRef<number>(0);
-  const angleRef = useRef({ x: 0, y: 0 });
-  
-  // Set initial slow automatic rotation velocity
-  const velocityRef = useRef({ x: 0.0003, y: 0.0005 });
-  
-  // Interaction and hover states
-  const [hoveredSkill, setHoveredSkillState] = useState<number | null>(null);
-  const [selectedSkill, setSelectedSkillState] = useState<number | null>(null);
-  const [isDragging, setIsDraggingState] = useState(false);
-  const [isTouch, setIsTouch] = useState(false);
-
-  const hoveredSkillRef = useRef<number | null>(null);
-  const selectedSkillRef = useRef<number | null>(null);
-  const isDraggingRef = useRef(false);
-  const isTouchRef = useRef(false);
-  const lastPointerPosition = useRef({ x: 0, y: 0 });
-  const dragDistance = useRef(0);
-  const hoverProgressRef = useRef<number[]>(new Array(SKILLS.length).fill(0));
-
-  const setHoveredSkill = (val: number | null) => {
-    hoveredSkillRef.current = val;
-    setHoveredSkillState(val);
-  };
-
-  const setSelectedSkill = (val: number | null) => {
-    selectedSkillRef.current = val;
-    setSelectedSkillState(val);
-  };
-
-  useEffect(() => {
-    const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    setIsTouch(hasTouch);
-    isTouchRef.current = hasTouch;
-  }, []);
-
-  /* ── Rotation matrix helpers ── */
-  const rotateY = useCallback((x: number, z: number, a: number): [number, number] => {
-    const cos = Math.cos(a), sin = Math.sin(a);
-    return [x * cos - z * sin, x * sin + z * cos];
-  }, []);
-
-  const rotateX = useCallback((y: number, z: number, a: number): [number, number] => {
-    const cos = Math.cos(a), sin = Math.sin(a);
-    return [y * cos - z * sin, y * sin + z * cos];
-  }, []);
-
-  /* ── Animation loop ── */
-  useEffect(() => {
-    const container = sphereRef.current;
-    if (!container) return;
-
-    const tags = container.querySelectorAll<HTMLSpanElement>('.sphere-tag');
-    
-    const animate = () => {
-      const RADIUS = container.offsetWidth * 0.38;
-      // momentum damping: decay faster on touch to save mobile battery and GPU redraws
-      const friction = isTouchRef.current ? 0.90 : 0.95;
-      const idleVelocity = { x: 0.0003, y: 0.0005 };
-
-      if (!isDraggingRef.current) {
-        // Slow down automatic rotation when hovering or if a tooltip is open
-        const speedMultiplier = (hoveredSkillRef.current !== null || selectedSkillRef.current !== null) ? 0.3 : 1;
-        const targetVelX = idleVelocity.x * speedMultiplier;
-        const targetVelY = idleVelocity.y * speedMultiplier;
-
-        // Smoothly decay velocity towards target idle velocity
-        velocityRef.current.x = velocityRef.current.x * friction + targetVelX * (1 - friction);
-        velocityRef.current.y = velocityRef.current.y * friction + targetVelY * (1 - friction);
-
-        // Apply velocity to angles
-        angleRef.current.x += velocityRef.current.x;
-        angleRef.current.y += velocityRef.current.y;
-      } else {
-        // Dragging decays velocity towards 0 so it slows down if held stationary
-        velocityRef.current.x *= 0.85;
-        velocityRef.current.y *= 0.85;
-      }
-
-      tags.forEach((tag, i) => {
-        const isHovered = hoveredSkillRef.current === i;
-        const targetProgress = isHovered ? 1 : 0;
-        
-        // Smoothly lerp hover scaling factor (skip on touch devices to save layout passes)
-        if (!isTouchRef.current) {
-          hoverProgressRef.current[i] += (targetProgress - hoverProgressRef.current[i]) * 0.15;
-        }
-
-        const [px, py, pz] = SPHERE_POINTS[i];
-
-        // Apply rotation
-        const [rx, rz1] = rotateY(px, pz, angleRef.current.y);
-        const [ry, rz2] = rotateX(py, rz1, angleRef.current.x);
-
-        // Map z to opacity and scale for depth
-        const depth = (rz2 + 1) / 2; // 0 (back) to 1 (front)
-        
-        // Base scale and depth opacity
-        const baseScale = 0.55 + depth * 0.55;
-        // 20% scale boost on hover (only active on desktop/hover interfaces), scaled smoothly by hoverProgress
-        const hoverScaleMultiplier = isTouchRef.current ? 1 : (1 + hoverProgressRef.current[i] * 0.2);
-        const scale = baseScale * hoverScaleMultiplier;
-
-        // Boost opacity when hovered (only active on desktop/hover interfaces)
-        const baseOpacity = 0.2 + depth * 0.8;
-        const opacity = isTouchRef.current ? baseOpacity : Math.min(1, baseOpacity + hoverProgressRef.current[i] * 0.3);
-
-        const translateX = rx * RADIUS;
-        const translateY = ry * RADIUS;
-
-        // Use translate3d to offload rendering layout shifts to GPU composition
-        tag.style.transform = `translate3d(-50%, -50%, 0) translate3d(${translateX}px, ${translateY}px, 0) scale(${scale})`;
-        tag.style.opacity = String(opacity);
-        
-        // Bring hovered tags to front
-        const baseZIndex = Math.round(depth * 100);
-        const zIndex = isHovered ? 200 : baseZIndex;
-        tag.style.zIndex = String(zIndex);
-      });
-
-      animFrameRef.current = requestAnimationFrame(animate);
-    };
-
-    animFrameRef.current = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(animFrameRef.current);
-  }, [rotateX, rotateY]);
-
-  /* ── Pointer event setup for physical drag and rotate ── */
-  useEffect(() => {
-    const handlePointerMove = (clientX: number, clientY: number) => {
-      if (!isDraggingRef.current) return;
-
-      const dx = clientX - lastPointerPosition.current.x;
-      const dy = clientY - lastPointerPosition.current.y;
-      
-      const sensitivity = 0.006;
-
-      angleRef.current.y += dx * sensitivity;
-      angleRef.current.x -= dy * sensitivity;
-
-      // Map horizontal drag to Y-rotation, vertical drag to X-rotation
-      velocityRef.current.y = dx * sensitivity;
-      velocityRef.current.x = -dy * sensitivity;
-
-      lastPointerPosition.current = { x: clientX, y: clientY };
-      dragDistance.current += Math.sqrt(dx * dx + dy * dy);
-    };
-
-    const handleMouseMove = (e: MouseEvent) => {
-      handlePointerMove(e.clientX, e.clientY);
-    };
-
-    const handleTouchMove = (e: TouchEvent) => {
-      if (e.touches.length === 0) return;
-      // Prevent scrolling page while actively dragging the sphere
-      if (isDraggingRef.current) {
-        e.preventDefault();
-      }
-      handlePointerMove(e.touches[0].clientX, e.touches[0].clientY);
-    };
-
-    const handlePointerUp = () => {
-      if (isDraggingRef.current) {
-        isDraggingRef.current = false;
-        setIsDraggingState(false);
-        document.body.classList.remove('global-grabbing');
-      }
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handlePointerUp);
-    window.addEventListener('touchmove', handleTouchMove, { passive: false });
-    window.addEventListener('touchend', handlePointerUp);
-    window.addEventListener('touchcancel', handlePointerUp);
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handlePointerUp);
-      window.removeEventListener('touchmove', handleTouchMove);
-      window.removeEventListener('touchend', handlePointerUp);
-      window.removeEventListener('touchcancel', handlePointerUp);
-    };
-  }, []);
-
-  const handleDragStart = (clientX: number, clientY: number) => {
-    isDraggingRef.current = true;
-    setIsDraggingState(true);
-    document.body.classList.add('global-grabbing');
-    lastPointerPosition.current = { x: clientX, y: clientY };
-    dragDistance.current = 0;
-  };
-
-  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.button !== 0) return; // only left click
-    handleDragStart(e.clientX, e.clientY);
-  };
-
-  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (e.touches.length === 0) return;
-    handleDragStart(e.touches[0].clientX, e.touches[0].clientY);
-  };
-
-  const handleTagClick = (e: React.MouseEvent, index: number) => {
-    if (dragDistance.current > 8) {
-      // It was a drag, not a tap!
-      e.preventDefault();
-      return;
-    }
-    setSelectedSkill(index);
-  };
-
+  const [hoveredNode, setHoveredNode] = useState<number | null>(null);
+  const [selectedSkill, setSelectedSkill] = useState<number | null>(null);
 
   /* ── Smooth scroll helper ── */
   const scrollToSection = useCallback((id: string) => {
@@ -276,9 +53,7 @@ export const HeroSection: React.FC = () => {
     <section className="hero" id="hero">
       {/* ── Ambient background effects ── */}
       <div className="hero-bg" aria-hidden="true">
-        <div className="hero-grid" />
-        <div className="hero-glow hero-glow--blue" />
-        <div className="hero-glow hero-glow--purple" />
+        {/* Decorative futuristic grids and glows removed to support editorial clean style */}
       </div>
 
       <div className="hero-container container-max">
@@ -334,43 +109,76 @@ export const HeroSection: React.FC = () => {
         </div>
 
         {/* ══════════════════════════════════
-            Right Column — Skill Sphere
+            Right Column — Connected Ecosystem
         ══════════════════════════════════ */}
         <div className="hero-right">
-          <div
-            className={`sphere-wrapper${isDragging ? ' is-dragging' : ''}`}
-            ref={sphereRef}
-            onMouseDown={handleMouseDown}
-            onTouchStart={handleTouchStart}
-            aria-label="Interactive technology skill sphere"
-          >
-            {/* Skill tags */}
-            {SKILLS.map((skill, i) => (
-              <span
-                key={skill}
-                className={`sphere-tag${hoveredSkill === i ? ' sphere-tag--hovered' : ''}`}
-                onMouseEnter={() => !isTouch && setHoveredSkill(i)}
-                onMouseLeave={() => !isTouch && setHoveredSkill(null)}
-                onClick={(e) => handleTagClick(e, i)}
-              >
-                {skill}
-              </span>
-            ))}
+          <div className="tech-ecosystem-container" aria-label="Interactive technology ecosystem">
+            {/* Concentric rings and connecting lines */}
+            <svg viewBox="0 0 100 100" className="tech-ecosystem-svg">
+              <circle cx="50" cy="50" r="16" className="concentric-ring ring-inner" />
+              <circle cx="50" cy="50" r="33" className="concentric-ring ring-outer" />
+              
+              {/* Lines from center to nodes */}
+              {ECO_SKILLS.map((skill, i) => {
+                const isHovered = hoveredNode === i;
+                const pos = NODE_POSITIONS[i];
+                return (
+                  <line
+                    key={skill.name}
+                    x1="50"
+                    y1="50"
+                    x2={pos.x}
+                    y2={pos.y}
+                    className={`connection-line ${isHovered ? 'highlighted' : ''}`}
+                  />
+                );
+              })}
+            </svg>
 
-            {/* Premium details card overlay for clicked/tapped skill */}
+            {/* Central Hub Core */}
+            <div className="center-hub-node">
+              <div className="hub-pulse" />
+              <div className="hub-dot" />
+              <span className="hub-label">Core Tech</span>
+            </div>
+
+            {/* Technology Nodes */}
+            {ECO_SKILLS.map((skill, i) => {
+              const isHovered = hoveredNode === i;
+              const pos = NODE_POSITIONS[i];
+              return (
+                <button
+                  key={skill.name}
+                  className={`ecosystem-node ${isHovered ? 'hovered' : ''} ${selectedSkill === i ? 'selected' : ''}`}
+                  style={{
+                    top: `${pos.y}%`,
+                    left: `${pos.x}%`,
+                  }}
+                  onMouseEnter={() => setHoveredNode(i)}
+                  onMouseLeave={() => setHoveredNode(null)}
+                  onClick={() => setSelectedSkill(i)}
+                  type="button"
+                >
+                  <span className="node-dot" style={{ backgroundColor: skill.color }} />
+                  <span className="node-name">{skill.name}</span>
+                </button>
+              );
+            })}
+
+            {/* Tooltip Card Overlay for clicked node details */}
             {selectedSkill !== null && (
               <div className="sphere-tooltip-overlay" onClick={() => setSelectedSkill(null)}>
                 <div className="sphere-tooltip-card" onClick={(e) => e.stopPropagation()}>
                   <button className="sphere-tooltip-close" onClick={() => setSelectedSkill(null)} aria-label="Close details">
                     <X size={14} />
                   </button>
-                  <h4 className="sphere-tooltip-title">{SKILLS[selectedSkill]}</h4>
-                  <p className="sphere-tooltip-category">{SKILL_DETAILS[SKILLS[selectedSkill]]?.category}</p>
+                  <h4 className="sphere-tooltip-title">{ECO_SKILLS[selectedSkill].name}</h4>
+                  <p className="sphere-tooltip-category">{SKILL_DETAILS[ECO_SKILLS[selectedSkill].name]?.category}</p>
                   <div className="sphere-tooltip-divider" />
                   <div className="sphere-tooltip-projects">
                     <span className="sphere-tooltip-projects-label">Used in:</span>
                     <div className="sphere-tooltip-project-list">
-                      {SKILL_DETAILS[SKILLS[selectedSkill]]?.projects.map((proj) => (
+                      {SKILL_DETAILS[ECO_SKILLS[selectedSkill].name]?.projects.map((proj) => (
                         <span key={proj} className="sphere-tooltip-project-pill">{proj}</span>
                       ))}
                     </div>
