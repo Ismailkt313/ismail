@@ -178,8 +178,37 @@ export const WhatsBuiltSection: React.FC = () => {
   const [activeProject, setActiveProject] = useState<string>(PROJECTS[0].id);
   const [sectionRevealed, setSectionRevealed] = useState(false);
   const [selectedProjectForModal, setSelectedProjectForModal] = useState<Project | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
 
   const activeProjectRef = useRef<string>(PROJECTS[0].id);
+
+  /* ── Track screen width for mobile optimization ── */
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (mobile) {
+        // Clear desktop inline scroll-driven animation styles on mobile
+        PROJECTS.forEach((project) => {
+          const card = document.getElementById(`project-card-${project.id}`);
+          if (card) {
+            card.style.opacity = '';
+            card.style.transform = '';
+            card.style.pointerEvents = '';
+            
+            const mobileFrame = card.querySelector<HTMLElement>('.wb-mockup-mobile');
+            if (mobileFrame) mobileFrame.style.transform = '';
+            
+            const widgetFrame = card.querySelector<HTMLElement>('.wb-mockup-widget-layer');
+            if (widgetFrame) widgetFrame.style.transform = '';
+          }
+        });
+      }
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   /* ── Section reveal observer ── */
   useEffect(() => {
@@ -205,6 +234,7 @@ export const WhatsBuiltSection: React.FC = () => {
   /* ── Butter-Smooth Scroll Tracker ── */
   useEffect(() => {
     const handleScroll = () => {
+      if (window.innerWidth < 768) return;
       const track = scrollTrackRef.current;
       if (!track) return;
 
@@ -443,7 +473,13 @@ export const WhatsBuiltSection: React.FC = () => {
                 <button
                   key={project.id}
                   className={`wb-floating-nav-item ${activeProject === project.id ? 'active' : ''}`}
-                  onClick={() => scrollToProject(idx)}
+                  onClick={() => {
+                    if (isMobile) {
+                      setActiveProject(project.id);
+                    } else {
+                      scrollToProject(idx);
+                    }
+                  }}
                   type="button"
                 >
                   {project.featured && <span className="wb-nav-star-icon">★</span>}
@@ -463,10 +499,7 @@ export const WhatsBuiltSection: React.FC = () => {
               const defaultPointerEvents = idx === 0 ? 'auto' : 'none';
               const zIndex = PROJECTS.length - idx;
 
-              // Filter mobile-only tech stack to show React, Node.js, MongoDB only
-              const mobileTech = project.techHighlights.filter((tech) =>
-                ['React', 'Node.js', 'MongoDB'].includes(tech)
-              );
+              // Display all tech highlights on mobile
 
               return (
                 <article
@@ -610,16 +643,7 @@ export const WhatsBuiltSection: React.FC = () => {
                     {/* ── MOBILE ONLY LAYOUT (< 768px viewports) ── */}
                     <div className="wb-card-mobile-layout">
                       
-                      {/* 1. Project Name & Label */}
-                      <div className="wb-mobile-card-header">
-                        <span className="wb-project-type-tag">{project.type}</span>
-                        <h3 className="wb-project-name-title">
-                          {project.title}
-                          {project.featured && <span className="wb-title-badge-pill">Flagship Project</span>}
-                        </h3>
-                      </div>
-
-                      {/* 2. Centered Large Project Screenshot */}
+                      {/* 1. Centered Large Project Screenshot */}
                       <div className="wb-mobile-screenshot-container">
                         <img
                           src={project.image}
@@ -630,19 +654,28 @@ export const WhatsBuiltSection: React.FC = () => {
                         />
                       </div>
 
+                      {/* 2. Project Name & Label */}
+                      <div className="wb-mobile-card-header">
+                        <span className="wb-project-type-tag">{project.type}</span>
+                        <h3 className="wb-project-name-title">
+                          {project.title}
+                          {project.featured && <span className="wb-title-badge-pill">Flagship Project</span>}
+                        </h3>
+                      </div>
+
                       {/* 3. One-Line Description */}
                       <p className="wb-mobile-card-desc">{project.description}</p>
 
-                      {/* 4. Tech Stack (Reduced) */}
+                      {/* 4. Tech Stack (Full) */}
                       <div className="wb-mobile-tech-strip">
                         <div className="wb-mobile-pills-list">
-                          {mobileTech.map((tech) => (
+                          {project.techHighlights.map((tech) => (
                             <span key={tech} className="wb-tech-pill">{tech}</span>
                           ))}
                         </div>
                       </div>
 
-                      {/* 5. 3 Key Highlights */}
+                      {/* 5. Key Highlights */}
                       <div className="wb-mobile-highlights-checklist">
                         {project.highlights.map((highlight, hIdx) => (
                           <span key={hIdx} className="wb-mobile-highlight-check-item">
@@ -651,7 +684,7 @@ export const WhatsBuiltSection: React.FC = () => {
                         ))}
                       </div>
 
-                      {/* 6. Button Hierarchy (Primary CTA + Secondary links) */}
+                      {/* 6. Button Hierarchy */}
                       <div className="wb-mobile-action-group">
                         <button
                           type="button"
